@@ -1,6 +1,8 @@
+import { DefaultErrorFunction, SetErrorFunction } from "@sinclair/typebox/errors";
 import { Value } from "@sinclair/typebox/value";
 import type { Request, Response } from "express";
-import { DefaultErrorFunction, SetErrorFunction } from "@sinclair/typebox/errors";
+import fs from "fs/promises";
+import path from "path";
 
 export class Exception extends Error {
   public code: number = 500;
@@ -11,6 +13,34 @@ export class Exception extends Error {
     this.status = status;
   }
 }
+
+export const findRoutesInDir = async (dirpath: string) => {
+  const dirItems = await fs.readdir(dirpath, { encoding: "utf8", recursive: true, withFileTypes: true });
+  const files = dirItems
+    .map((item) => path.join(item.path, item.name))
+    .filter((item) => item.endsWith(".ts") || item.endsWith(".js") || item.endsWith(".cjs") || item.endsWith(".mjs"));
+
+  const allRoutes: TurboCore.ITurboRoute[] = [];
+
+  for (let filepath of files) {
+    // Import provided filepath and extract routeKey for TurboRoute object.
+    const imported = await import(filepath);
+    const routeKey = Object.keys(imported).find((item) => item.includes("Route"));
+
+    // print warning for found filepath
+    if (!routeKey) {
+      console.warn(`${filepath} doesn't export a valid TurboRoute`);
+      continue;
+    }
+
+    // Add found Route to all routes
+    const routeFound: TurboCore.ITurboRoute = imported[routeKey];
+    // TODO: validate found route to match our expected schema.
+    allRoutes.push(routeFound);
+  }
+
+  return allRoutes;
+};
 
 SetErrorFunction((ex) => {
   // Remove starting / from path and replace with dots(.)

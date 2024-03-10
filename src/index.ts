@@ -1,13 +1,15 @@
 import express from "express";
-import type { Request, Response, NextFunction } from "express-serve-static-core";
+import type { NextFunction, Request, Response } from "express-serve-static-core";
 import { utils } from "./core/index.js";
-import { ApiRoutes, createFailureResponse, createSuccessResponse } from "./turbo.js";
 import { Exception } from "./core/utils.js";
+import { createFailureResponse, createSuccessResponse } from "./turbo.js";
 
 const main = async (): Promise<void> => {
   // Handle Http Requests
   const app = express();
 
+  // Find all routes from directory
+  const ApiRoutes = await utils.findRoutesInDir("src/api");
   // Configure all routes
   ApiRoutes.forEach((route) => {
     const method = route.method.toLowerCase() as "get" | "post" | "put" | "patch" | "delete";
